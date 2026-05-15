@@ -2,10 +2,12 @@ import os
 import numpy as np
 import pandas as pd
 import faiss
+
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.decomposition import TruncatedSVD
 
 # ==================================================
-# BASE PATH
+# PATHS
 # ==================================================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
@@ -19,9 +21,10 @@ FAISS_PATH = os.path.join(DATA_DIR, "faiss_index.index")
 faiss_index = None
 job_df = None
 vectorizer = None
+svd_model = None
 
 # ==================================================
-# SKILL LIBRARY (for extraction)
+# SKILL LIBRARY
 # ==================================================
 SKILL_LIBRARY = [
     "python", "java", "c++", "javascript", "php",
@@ -32,19 +35,15 @@ SKILL_LIBRARY = [
     "communication", "teamwork", "problem solving"
 ]
 
-# ==================================================
-# SKILL WEIGHTS (NEW)
-# ==================================================
 CORE_SKILLS = {
     "python": 1.0,
     "java": 1.0,
     "sql": 1.0,
     "machine learning": 1.0,
     "javascript": 1.0,
-    "php": 0.9,
+    "api": 0.9,
     "django": 0.9,
     "flask": 0.9,
-    "api": 0.9,
 }
 
 SOFT_SKILLS = {
@@ -57,7 +56,7 @@ SOFT_SKILLS = {
 # LOAD ENGINE
 # ==================================================
 def load_engine():
-    global faiss_index, job_df, vectorizer
+    global faiss_index, job_df, vectorizer, svd_model
 
     if faiss_index is None:
         faiss_index = faiss.read_index(FAISS_PATH)
@@ -65,11 +64,25 @@ def load_engine():
     if job_df is None:
         job_df = pd.read_csv(JOB_PATH, encoding="latin1")
 
+    # TF-IDF
     if vectorizer is None:
-        vectorizer = TfidfVectorizer(max_features=faiss_index.d)
+        vectorizer = TfidfVectorizer(
+            max_features=faiss_index.d,
+            ngram_range=(1, 2)
+        )
 
         text_data = job_df.fillna("").astype(str).agg(" ".join, axis=1)
-        vectorizer.fit(text_data)
+        tfidf_matrix = vectorizer.fit_transform(text_data)
+
+        # ==================================================
+        # SVD SEMANTIC LAYER (NEW)
+        # ==================================================
+        svd_model = TruncatedSVD(
+            n_components=min(300, tfidf_matrix.shape[1] - 1)
+        )
+
+        svd_model.fit(tfidf_matrix)
+
 
 # ==================================================
 # SKILL EXTRACTION
@@ -78,8 +91,9 @@ def extract_skills(text):
     text = str(text).lower()
     return [s for s in SKILL_LIBRARY if s in text]
 
+
 # ==================================================
-# WEIGHTED SKILL SCORE (NEW)
+# SKILL SCORE (CLEAN FIX)
 # ==================================================
 def compute_weighted_skill_score(curr_skills, job_skills):
 
@@ -90,37 +104,35 @@ def compute_weighted_skill_score(curr_skills, job_skills):
         return 0.0
 
     score = 0.0
-    total_weight = 0.0
+    total = 0.0
 
-    for skill in job_set:
-        weight = CORE_SKILLS.get(skill, SOFT_SKILLS.get(skill, 0.7))
-        total_weight += weight
+    for s in job_set:
+        w = CORE_SKILLS.get(s, SOFT_SKILLS.get(s, 0.7))
+        total += w
+        if s in curr_set:
+            score += w
 
-        if skill in curr_set:
-            score += weight
+    return min(score / total, 0.85) if total > 0 else 0.0
 
-    if total_weight == 0:
-        return 0.0
-
-    return score / total_weight
 
 # ==================================================
-# SKILL OVERLAP (backup signal)
+# OVERLAP SCORE (FIXED)
 # ==================================================
 def compute_skill_overlap(curr_skills, job_skills):
 
     curr_set = set([s.lower() for s in curr_skills])
     job_set = set([s.lower() for s in job_skills])
 
-    if len(job_set) == 0:
+    if not job_set:
         return 0.0
 
     return len(curr_set.intersection(job_set)) / len(job_set)
 
+
 # ==================================================
-# TITLE BOOST (NEW)
+# TITLE BOOST + PENALTY SYSTEM
 # ==================================================
-def compute_title_boost(job_title, curr_skills):
+def compute_title_effect(job_title, curr_skills):
 
     if not job_title:
         return 0.0
@@ -128,14 +140,20 @@ def compute_title_boost(job_title, curr_skills):
     title = job_title.lower()
     boost = 0.0
 
-    for skill in curr_skills:
-        if skill in title:
-            boost += 0.1
+    # boost if skill appears in title
+    for s in curr_skills:
+        if s in title:
+            boost += 0.08
 
-    return min(boost, 0.3)
+    # penalty for UX/UI noise bias
+    if any(x in title for x in ["ux", "ui", "designer"]):
+        boost -= 0.1
+
+    return max(min(boost, 0.25), -0.25)
+
 
 # ==================================================
-# FAISS SEARCH (TOP-5)
+# FAISS SEARCH
 # ==================================================
 def search_jobs(embeddings, top_k=5):
 
@@ -144,14 +162,16 @@ def search_jobs(embeddings, top_k=5):
 
     return distances, indices
 
+
 # ==================================================
 # GET JOB
 # ==================================================
 def get_job_by_index(idx):
     return job_df.iloc[idx]
 
+
 # ==================================================
-# MAIN PIPELINE (UPGRADED)
+# MAIN PIPELINE (FINAL UPGRADED)
 # ==================================================
 def run_alignment_analysis(df):
 
@@ -165,19 +185,18 @@ def run_alignment_analysis(df):
     )
 
     # ==================================================
-    # EMBEDDINGS
+    # SEMANTIC EMBEDDING (SVD TRANSFORM)
     # ==================================================
-    curriculum_embeddings = vectorizer.transform(
-        df["combined_text"].tolist()
-    ).toarray().astype("float32")
+    tfidf_matrix = vectorizer.transform(df["combined_text"])
+    semantic_embeddings = svd_model.transform(tfidf_matrix).astype("float32")
 
     # ==================================================
-    # TOP-5 SEARCH
+    # FAISS SEARCH
     # ==================================================
-    distances, indices = search_jobs(curriculum_embeddings, top_k=5)
+    distances, indices = search_jobs(semantic_embeddings, top_k=5)
 
     # ==================================================
-    # PROCESS EACH ROW WITH RERANKING
+    # RERANKING
     # ==================================================
     for i, row in df.iterrows():
 
@@ -186,16 +205,12 @@ def run_alignment_analysis(df):
 
         curriculum_skills = list(set(extract_skills(row["combined_text"])))
 
-        # --------------------------------------------------
-        # RERANK TOP 5
-        # --------------------------------------------------
         for rank in range(5):
 
             job_idx = int(indices[i][rank])
             faiss_score = float(1 / (1 + distances[i][rank]))
 
             job = get_job_by_index(job_idx)
-
             job_title = job.get("title") or job.get("job_title")
 
             job_skills = job["skills"]
@@ -208,27 +223,22 @@ def run_alignment_analysis(df):
                 )
                 job_skills = [s.strip().lower() for s in job_skills.split(",") if s.strip()]
 
-            # -------------------------------
+            # ==================================================
             # SCORES
-            # -------------------------------
-            weighted_skill = compute_weighted_skill_score(curriculum_skills, job_skills)
-            overlap_skill = compute_skill_overlap(curriculum_skills, job_skills)
-            title_boost = compute_title_boost(job_title, curriculum_skills)
+            # ==================================================
+            weighted = compute_weighted_skill_score(curriculum_skills, job_skills)
+            overlap = compute_skill_overlap(curriculum_skills, job_skills)
+            title_effect = compute_title_effect(job_title, curriculum_skills)
 
-            # -------------------------------
-            # FINAL HYBRID SCORE
-            # -------------------------------
             final_score = (
-                (faiss_score * 0.5) +
-                (weighted_skill * 0.3) +
-                (overlap_skill * 0.1) +
-                (title_boost * 0.1)
+                (faiss_score * 0.45) +
+                (weighted * 0.35) +
+                (overlap * 0.10) +
+                (title_effect * 0.10)
             )
 
-            # -------------------------------
-            # TRACK BEST MATCH
-            # -------------------------------
             if final_score > best_score:
+
                 best_score = final_score
 
                 missing_skills = list(set(job_skills) - set(curriculum_skills))
@@ -239,9 +249,9 @@ def run_alignment_analysis(df):
                     "matched_job": job_title,
 
                     "faiss_score": round(faiss_score, 4),
-                    "weighted_skill_score": round(weighted_skill, 4),
-                    "skill_overlap": round(overlap_skill, 4),
-                    "title_boost": round(title_boost, 4),
+                    "weighted_skill_score": round(weighted, 4),
+                    "skill_overlap": round(overlap, 4),
+                    "title_effect": round(title_effect, 4),
 
                     "similarity_score": round(final_score, 4),
 
