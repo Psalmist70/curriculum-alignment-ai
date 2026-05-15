@@ -8,15 +8,8 @@ from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 
-from .nlp_engine import (
-    run_alignment_analysis,
-    search_jobs,
-    get_job_by_index,
-    extract_skills
-)
-
+from .nlp_engine import run_alignment_analysis
 from .skill_gap import detect_skill_gaps
-from .recommendation import generate_recommendations
 from .analytics import generate_analytics
 from .serializers import AnalysisResultSerializer
 from .models import CurriculumUpload, AnalysisResult
@@ -72,7 +65,7 @@ def upload_curriculum(request):
         )
 
         # =====================================================
-        # RUN NLP PIPELINE (NO TRANSFORMERS, NO HEAVY LOAD)
+        # RUN NLP PIPELINE
         # =====================================================
         results = run_alignment_analysis(df)
 
