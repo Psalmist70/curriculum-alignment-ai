@@ -3,7 +3,6 @@ djangorestframework
 pandas
 numpy
 faiss-cpu
-sentence-transformers
 scikit-learn
 gunicorn
 whitenoise
