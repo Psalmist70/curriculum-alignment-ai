@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import faiss
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 # ==================================================
 # BASE PATH
@@ -11,19 +12,21 @@ DATA_DIR = os.path.join(BASE_DIR, "data")
 
 JOB_PATH = os.path.join(DATA_DIR, "processed_jobs.csv")
 FAISS_PATH = os.path.join(DATA_DIR, "faiss_index.index")
+JOB_EMBEDDINGS_PATH = os.path.join(DATA_DIR, "job_embeddings.npy")
 
 # ==================================================
 # GLOBALS (LAZY LOADED)
 # ==================================================
 faiss_index = None
 job_df = None
-model = None
+job_embeddings = None
+vectorizer = None
 
 # ==================================================
 # LOAD ENGINE SAFELY (CRITICAL FIX)
 # ==================================================
 def load_engine():
-    global faiss_index, job_df, model
+    global faiss_index, job_df, job_embeddings, vectorizer
 
     if faiss_index is None:
         faiss_index = faiss.read_index(FAISS_PATH)
@@ -31,9 +34,18 @@ def load_engine():
     if job_df is None:
         job_df = pd.read_csv(JOB_PATH, encoding="latin1")
 
-    if model is None:
-        from sentence_transformers import SentenceTransformer
-        model = SentenceTransformer("all-MiniLM-L6-v2")
+    # Load embeddings (optional but now not heavily used)
+    if job_embeddings is None:
+        job_embeddings = np.load(JOB_EMBEDDINGS_PATH, mmap_mode="r")
+
+    # Lightweight NLP fallback (NO TRANSFORMERS)
+    if vectorizer is None:
+        vectorizer = TfidfVectorizer(max_features=3000)
+        text_data = (
+            job_df["description"].fillna("").astype(str) + " " +
+            job_df["skills"].fillna("").astype(str)
+        )
+        vectorizer.fit(text_data)
 
 
 # ==================================================
@@ -73,8 +85,7 @@ def get_job_by_index(idx):
 # MAIN PIPELINE
 # ==================================================
 def run_alignment_analysis(df):
-
-    load_engine()  # 🔥 IMPORTANT FIX
+    load_engine()
 
     results = []
 
@@ -83,24 +94,21 @@ def run_alignment_analysis(df):
         df["course_description"].astype(str)
     )
 
-    # --------------------------------------
-    # EMBEDDINGS
-    # --------------------------------------
-    curriculum_embeddings = model.encode(
-        df["combined_text"].tolist(),
-        show_progress_bar=False
-    )
+    # ==================================================
+    # EMBEDDINGS (NO TRANSFORMER - LIGHTWEIGHT TF-IDF)
+    # ==================================================
+    curriculum_embeddings = vectorizer.transform(
+        df["combined_text"].tolist()
+    ).toarray().astype("float32")
 
-    curriculum_embeddings = np.array(curriculum_embeddings).astype("float32")
-
-    # --------------------------------------
+    # ==================================================
     # FAISS SEARCH
-    # --------------------------------------
+    # ==================================================
     distances, indices = search_jobs(curriculum_embeddings, top_k=1)
 
-    # --------------------------------------
+    # ==================================================
     # PROCESS RESULTS
-    # --------------------------------------
+    # ==================================================
     for i, row in df.iterrows():
 
         job_idx = int(indices[i][0])
@@ -110,12 +118,12 @@ def run_alignment_analysis(df):
 
         curriculum_skills = list(set(extract_skills(row["combined_text"])))
 
-        # 🔥 FIX: safe column handling
+        # Safe job title handling
         job_title = job.get("title") or job.get("job_title")
 
         job_skills = job["skills"]
 
-        # normalize skills
+        # Normalize skills
         if isinstance(job_skills, str):
             job_skills = (
                 job_skills.replace("[", "")
