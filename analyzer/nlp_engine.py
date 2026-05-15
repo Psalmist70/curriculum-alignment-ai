@@ -42,7 +42,7 @@ def load_engine():
     if vectorizer is None:
         vectorizer = TfidfVectorizer(max_features=3000)
         text_data = (
-            job_df["description"].fillna("").astype(str) + " " +
+            job_df["job_description"].fillna("").astype(str) + " " +
             job_df["skills"].fillna("").astype(str)
         )
         vectorizer.fit(text_data)
