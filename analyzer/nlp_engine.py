@@ -40,7 +40,7 @@ def load_engine():
 
     # Lightweight NLP fallback (NO TRANSFORMERS)
     if vectorizer is None:
-        vectorizer = TfidfVectorizer(max_features=3000)
+        vectorizer = TfidfVectorizer(max_features=faiss_index.d)
         text_data = (
             job_df["job_description"].fillna("").astype(str) + " " +
             job_df["skills"].fillna("").astype(str)
