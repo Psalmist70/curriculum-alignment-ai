@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import io
+import traceback
 
 from django.http import JsonResponse
 from rest_framework.decorators import api_view, parser_classes
@@ -101,9 +102,12 @@ def upload_curriculum(request):
         })
 
     except Exception as e:
-        return Response({
-            "error": str(e)
-        }, status=500)
+    print("FULL ERROR:")
+    traceback.print_exc()
+
+    return Response({
+        "error": str(e)
+    }, status=500)
 
 
 # =========================================================
