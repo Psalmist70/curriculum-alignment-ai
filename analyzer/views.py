@@ -101,13 +101,13 @@ def upload_curriculum(request):
             "results": results
         })
 
-    except Exception as e:
-    print("FULL ERROR:")
-    traceback.print_exc()
+        except Exception as e:
+            print("FULL ERROR:")
+            traceback.print_exc()
 
-    return Response({
-        "error": str(e)
-    }, status=500)
+            return Response({
+                "error": str(e)
+            }, status=500)
 
 
 # =========================================================
