@@ -214,6 +214,11 @@ def run_alignment_analysis(df):
             job = get_job_by_index(job_idx)
             job_title = job.get("title") or job.get("job_title")
 
+            generic_jobs = ["teacher", "assistant", "manager", "officer", "executive"]
+
+            if job_title.lower() in generic_jobs:
+                faiss_score *= 0.9
+
             job_skills = job["skills"]
 
             if isinstance(job_skills, str):
@@ -232,8 +237,8 @@ def run_alignment_analysis(df):
             title_effect = compute_title_effect(job_title, curriculum_skills)
 
             final_score = (
-                (faiss_score * 0.45) +
-                (weighted * 0.35) +
+                (faiss_score * 0.55) +
+                (weighted * 0.25) +
                 (overlap * 0.10) +
                 (title_effect * 0.10)
             )
