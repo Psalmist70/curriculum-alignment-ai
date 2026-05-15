@@ -67,7 +67,7 @@ def load_engine():
     # TF-IDF
     if vectorizer is None:
         vectorizer = TfidfVectorizer(
-            max_features=faiss_index.d,
+            max_features=1000,
             ngram_range=(1, 2)
         )
 
@@ -78,7 +78,8 @@ def load_engine():
         # SVD SEMANTIC LAYER (NEW)
         # ==================================================
         svd_model = TruncatedSVD(
-            n_components=min(300, tfidf_matrix.shape[1] - 1)
+            n_components=min(300, tfidf_matrix.shape[1] - 1),
+            random_state=42
         )
 
         svd_model.fit(tfidf_matrix)
