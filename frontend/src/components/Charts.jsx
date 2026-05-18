@@ -1,49 +1,51 @@
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
+  PieChart,
+  Pie,
+  Cell,
   Tooltip,
-  ResponsiveContainer
+  Legend,
 } from "recharts";
 
 export default function Charts({ analytics }) {
 
   const data = [
-    {
-      name: "High",
-      value: analytics.high_match
-    },
-    {
-      name: "Medium",
-      value: analytics.medium_match
-    },
-    {
-      name: "Low",
-      value: analytics.low_match
-    }
+    { name: "High", value: analytics.high_match },
+    { name: "Medium", value: analytics.medium_match },
+    { name: "Low", value: analytics.low_match },
   ];
 
+  const COLORS = ["#10b981", "#6366f1", "#f43f5e"];
+
   return (
+    <div className="bg-white rounded-3xl p-8 shadow-lg mt-10">
 
-    <div className="bg-white p-6 rounded-xl shadow my-6">
-
-      <h2 className="text-xl font-bold mb-4">
+      <h2 className="text-2xl font-bold mb-6 text-center">
         Alignment Distribution
       </h2>
 
-      <ResponsiveContainer width="100%" height={300}>
+      <div className="flex justify-center">
 
-        <BarChart data={data}>
+        <PieChart width={350} height={300}>
 
-          <XAxis dataKey="name" />
-          <YAxis />
+          <Pie
+            data={data}
+            cx="50%"
+            cy="50%"
+            label
+            outerRadius={110}
+            dataKey="value"
+          >
+            {data.map((entry, index) => (
+              <Cell key={index} fill={COLORS[index]} />
+            ))}
+          </Pie>
+
           <Tooltip />
-          <Bar dataKey="value" />
+          <Legend />
 
-        </BarChart>
+        </PieChart>
 
-      </ResponsiveContainer>
+      </div>
 
     </div>
   );

@@ -14,6 +14,7 @@ export default function ResultsTable({ results }) {
             <th className="p-3 text-left">Matched Job</th>
             <th className="p-3 text-left">Score</th>
             <th className="p-3 text-left">Missing Skills</th>
+            <th className="p-3 text-left">Recommendations</th>
 
           </tr>
 
@@ -29,12 +30,25 @@ export default function ResultsTable({ results }) {
 
               <td className="p-3">{r.matched_job}</td>
 
-              <td className="p-3">
+              <td className="p-3 font-semibold text-indigo-600">
                 {r.similarity_score}
               </td>
 
-              <td className="p-3">
-                {r.missing_skills.join(", ")}
+              <td className="p-3 text-red-600">
+                {r.missing_skills?.length
+                  ? r.missing_skills.join(", ")
+                  : "None"}
+              </td>
+
+              {/* ✅ FIX: ADD RECOMMENDATIONS DISPLAY */}
+              <td className="p-3 text-green-700">
+
+                {r.recommendations?.length
+                  ? r.recommendations.map((rec, idx) => (
+                      <div key={idx}>• {rec}</div>
+                    ))
+                  : "No recommendations"}
+
               </td>
 
             </tr>
