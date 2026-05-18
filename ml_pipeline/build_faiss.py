@@ -1,35 +1,78 @@
-import numpy as np
+import os
 import pandas as pd
+import numpy as np
 import faiss
 
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.decomposition import TruncatedSVD
 
-# ==========================================
+# ==================================================
+# ROOT DIRECTORY
+# ==================================================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# ==================================================
+# FILE PATHS
+# ==================================================
+JOB_PATH = os.path.join(BASE_DIR, "processed_jobs.csv")
+FAISS_PATH = os.path.join(BASE_DIR, "faiss_index.index")
+
+# ==================================================
 # LOAD DATA
-# ==========================================
-df = pd.read_csv("processed_jobs.csv", encoding="latin1")
+# ==================================================
+job_df = pd.read_csv(JOB_PATH)
 
-embeddings = np.load("job_embeddings.npy").astype("float32")
+# ==================================================
+# COMBINE TEXT
+# ==================================================
+job_df["combined_text"] = (
+    job_df.fillna("").astype(str).agg(" ".join, axis=1)
+)
 
-print("Embeddings shape:", embeddings.shape)
+# ==================================================
+# TF-IDF
+# ==================================================
+vectorizer = TfidfVectorizer(
+    max_features=3000,
+    ngram_range=(1, 2)
+)
 
+tfidf_matrix = vectorizer.fit_transform(
+    job_df["combined_text"]
+)
 
-# ==========================================
-# GET VECTOR DIMENSION
-# ==========================================
-dim = embeddings.shape[1]
+# ==================================================
+# SVD SEMANTIC LAYER
+# ==================================================
+svd_model = TruncatedSVD(
+    n_components=min(300, tfidf_matrix.shape[1] - 1),
+    random_state=42
+)
 
+semantic_embeddings = svd_model.fit_transform(
+    tfidf_matrix
+)
 
-# ==========================================
-# BUILD INDEX
-# ==========================================
-index = faiss.IndexFlatL2(dim)
+semantic_embeddings = semantic_embeddings.astype("float32")
 
-index.add(embeddings)
+# ==================================================
+# BUILD FAISS
+# ==================================================
+dimension = semantic_embeddings.shape[1]
 
+index = faiss.IndexFlatL2(dimension)
 
-# ==========================================
+index.add(semantic_embeddings)
+
+# ==================================================
 # SAVE INDEX
-# ==========================================
-faiss.write_index(index, "faiss_index.index")
+# ==================================================
+faiss.write_index(index, FAISS_PATH)
 
-print("FAISS index saved successfully.")
+# ==================================================
+# SUCCESS MESSAGE
+# ==================================================
+print("FAISS rebuilt successfully.")
+print("FAISS saved to:", FAISS_PATH)
+print("Embedding shape:", semantic_embeddings.shape)
+print("FAISS dimension:", dimension)
