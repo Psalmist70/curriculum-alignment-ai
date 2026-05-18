@@ -9,20 +9,18 @@ from django.conf import settings
 
 from django.conf.urls.static import static
 
+from django.http import JsonResponse
+
+def home(request):
+    return JsonResponse({
+        "status": "running",
+        "message": "Curriculum Alignment API is live"
+    })
 
 urlpatterns = [
-
-    path(
-        'admin/',
-        admin.site.urls
-    ),
-
-    path(
-        'api/',
-        include('analyzer.urls')
-    )
+    path("", home),  # 👈 THIS FIXES YOUR ERROR
+    path("api/", include("analyzer.urls")),
 ]
-
 
 if settings.DEBUG:
 

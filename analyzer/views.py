@@ -1,24 +1,18 @@
 import pandas as pd
 import numpy as np
 import io
+import traceback
 
 from django.http import JsonResponse
-
-def health(request):
-    return JsonResponse({"status": "ok"})
-
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 
-from .nlp_engine import run_alignment_analysis, search_jobs, get_job_by_index, extract_skills
+from .nlp_engine import run_alignment_analysis
 from .skill_gap import detect_skill_gaps
-from .recommendation import generate_recommendations
 from .analytics import generate_analytics
 from .serializers import AnalysisResultSerializer
 from .models import CurriculumUpload, AnalysisResult
-
-from sentence_transformers import SentenceTransformer
 
 # =========================================================
 # HEALTH CHECK
@@ -45,7 +39,7 @@ def upload_curriculum(request):
 
     try:
         # =====================================================
-        # READ FILE SAFELY (FIXES UTF-8 + EmptyData issues)
+        # READ FILE SAFELY
         # =====================================================
         content = uploaded_file.read()
 
@@ -71,12 +65,12 @@ def upload_curriculum(request):
         )
 
         # =====================================================
-        # RUN NLP + FAISS PIPELINE
+        # RUN NLP PIPELINE
         # =====================================================
         results = run_alignment_analysis(df)
 
         # =====================================================
-        # SAVE RESULTS TO DB
+        # SAVE RESULTS
         # =====================================================
         for result in results:
             AnalysisResult.objects.create(
@@ -101,6 +95,9 @@ def upload_curriculum(request):
         })
 
     except Exception as e:
+        print("FULL ERROR:")
+        traceback.print_exc()
+
         return Response({
             "error": str(e)
         }, status=500)
