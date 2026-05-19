@@ -5,14 +5,20 @@ const API = axios.create({
 });
 
 export const uploadCurriculum = async (file) => {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
 
-  const formData = new FormData();
+    const response = await API.post("/upload/", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data"
+      }
+    });
 
-  formData.append("file", file);
+    return response.data;
 
-  return await API.post("/upload/", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data"
-    }
-  });
+  } catch (error) {
+    console.error("Upload failed:", error);
+    throw error;
+  }
 };
