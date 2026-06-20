@@ -154,15 +154,13 @@ export default function App() {
         {/* RESULTS */}
 
         {data && (
+          <div style={{ color: "black", background: "white", padding: "20px" }}>
+            <h1>DATA RECEIVED</h1>
 
-          <>
-            <AnalyticsCards analytics={data.analytics} />
-
-            <Charts analytics={data.analytics} />
-
-            <ResultsTable results={data.results} />
-          </>
-
+            <pre>
+              {JSON.stringify(data, null, 2)}
+            </pre>
+          </div>
         )}
 
       </div>
