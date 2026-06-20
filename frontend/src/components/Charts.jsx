@@ -8,13 +8,18 @@ import {
 
 export default function Charts({ analytics }) {
 
+  if (!analytics) return null;
+
   const data = [
-    { name: "High", value: analytics.high_match },
-    { name: "Medium", value: analytics.medium_match },
-    { name: "Low", value: analytics.low_match },
+    { name: "High", value: analytics.high_match || 0 },
+    { name: "Medium", value: analytics.medium_match || 0 },
+    { name: "Low", value: analytics.low_match || 0 },
   ];
 
   const COLORS = ["#10b981", "#6366f1", "#f43f5e"];
+
+  const isEmpty = data.every(d => d.value === 0);
+  if (isEmpty) return <p>No alignment data available</p>;
 
   return (
     <div className="bg-white rounded-3xl p-8 shadow-lg mt-10">
@@ -26,7 +31,6 @@ export default function Charts({ analytics }) {
       <div className="flex justify-center">
 
         <PieChart width={350} height={300}>
-
           <Pie
             data={data}
             cx="50%"
@@ -42,7 +46,6 @@ export default function Charts({ analytics }) {
 
           <Tooltip />
           <Legend />
-
         </PieChart>
 
       </div>
