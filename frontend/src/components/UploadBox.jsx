@@ -18,8 +18,9 @@ export default function UploadBox({ setData }) {
     try {
 
       const response = await uploadCurriculum(file);
-
-      console.log(response.data);
+      console.log("RESPONSE:", response);
+      
+      console.log("RESPONSE.DATA:", response.data);
 
       setData(response.data);
 
