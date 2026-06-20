@@ -14,7 +14,7 @@ export default function AnalyticsCards({ analytics }) {
       <div className="bg-white p-4 rounded-xl shadow">
         <h3>Average Score</h3>
         <p className="text-2xl font-bold">
-          {analytics.avg_score?.toFixed(2)}
+          {analytics.average_score?.toFixed(2)}
         </p>
       </div>
 
