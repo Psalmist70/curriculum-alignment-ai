@@ -1,5 +1,9 @@
 export default function ResultsTable({ results }) {
 
+  if (!results) return null;
+
+  const safeResults = results || [];
+
   return (
 
     <div className="bg-white p-6 rounded-xl shadow overflow-x-auto">
@@ -22,7 +26,7 @@ export default function ResultsTable({ results }) {
 
         <tbody>
 
-          {results.map((r, i) => (
+          {safeResults.map((r, i) => (
 
             <tr key={i} className="border-t">
 
@@ -31,7 +35,7 @@ export default function ResultsTable({ results }) {
               <td className="p-3">{r.matched_job}</td>
 
               <td className="p-3 font-semibold text-indigo-600">
-                {r.similarity_score}
+                {r.similarity_score?.toFixed(2)}
               </td>
 
               <td className="p-3 text-red-600">
@@ -40,7 +44,6 @@ export default function ResultsTable({ results }) {
                   : "None"}
               </td>
 
-              {/* ✅ FIX: ADD RECOMMENDATIONS DISPLAY */}
               <td className="p-3 text-green-700">
 
                 {r.recommendations?.length
