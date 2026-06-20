@@ -1,7 +1,7 @@
 export default function AnalyticsCards({ analytics }) {
+  if (!analytics) return null;
 
   return (
-
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 my-6">
 
       <div className="bg-white p-4 rounded-xl shadow">
